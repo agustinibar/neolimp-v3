@@ -1,0 +1,53 @@
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Build output ---
+dist/
+build/
+
+# --- Logs ---
+logs/
+*.log
+*.log.*
+log.txt
+
+# --- Environment variables ---
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+
+# --- Cache ---
+.cache/
+.vite/
+.eslintcache
+.parcel-cache/
+.next/
+out/
+
+# --- Testing ---
+coverage/
+*.lcov
+
+# --- Editor / IDE ---
+.vscode/
+.history/
+*.swp
+*.swo
+
+# --- System files ---
+.DS_Store
+Thumbs.db
+
+# --- Optional: TypeScript ---
+*.tsbuildinfo
+
+# --- Optional: Firebase local ---
+.firebaserc
+.firebase/
