@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { useInView } from '@/hooks/useInView';
 import { MapPin, Phone, Mail, Clock, Instagram } from 'lucide-react';
 
-const API_URL = 'https://neolimp-v3.onrender.com';
+const API_URL = import.meta.env.VITE_CONTACT_API_URL || 'https://neolimp-v3.onrender.com';
+
 const INSTAGRAM_USERNAME = 'neolimp_srl';
 
 const INSTAGRAM_POSTS = [
