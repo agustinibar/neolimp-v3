@@ -2,9 +2,9 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const nodemailer = require("nodemailer");
 const rateLimit = require("express-rate-limit");
 const admin = require("firebase-admin");
+const { Resend } = require("resend");
 
 const app = express();
 
@@ -54,6 +54,17 @@ if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
 }
 
 /* =========================
+ * Resend (Email por HTTP API)
+ * ========================= */
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+function assertResend() {
+  if (!resend) throw new Error("RESEND_API_KEY no configurada");
+  const from = process.env.FROM_EMAIL;
+  if (!from) throw new Error("FROM_EMAIL no configurada (remitente requerido por Resend)");
+}
+
+/* =========================
  * Helpers de clasificación
  * ========================= */
 function normalize(s) {
@@ -97,16 +108,16 @@ function scoreLead(payload) {
   if (mensaje.length >= 40) score += 2;
 
   const keywordsPresupuesto = [
-    "presupuesto","cotizacion","precio","cuanto","m2","metros","frecuencia",
-    "semanal","mensual","diaria","visita","relevamiento","abono",
-    "limpieza","oficina","industrial","planta","consorcio","edificio","club","municipio"
+    "presupuesto", "cotizacion", "precio", "cuanto", "m2", "metros", "frecuencia",
+    "semanal", "mensual", "diaria", "visita", "relevamiento", "abono",
+    "limpieza", "oficina", "industrial", "planta", "consorcio", "edificio", "club", "municipio",
   ];
 
-  if (keywordsPresupuesto.some(k => mensaje.includes(k))) score += 3;
+  if (keywordsPresupuesto.some((k) => mensaje.includes(k))) score += 3;
   else reasons.push("sin_keywords_presupuesto");
 
-  const keywordsTrabajo = ["busco trabajo","quiero trabajar","cv","curriculum","empleo","rrhh","postular"];
-  if (keywordsTrabajo.some(k => mensaje.includes(k))) {
+  const keywordsTrabajo = ["busco trabajo", "quiero trabajar", "cv", "curriculum", "empleo", "rrhh", "postular"];
+  if (keywordsTrabajo.some((k) => mensaje.includes(k))) {
     score -= 10;
     reasons.push("keyword_trabajo");
   }
@@ -120,24 +131,46 @@ function scoreLead(payload) {
   if (score <= -3) status = "spam_o_trabajo";
   else if (score < 3) status = "sospechoso";
 
+  // Opcional: si querés ver por qué quedó válido, podés guardar reasons vacíos.
   return { status, score, reasons };
 }
 
 /* =========================
- * Email (SMTP Gmail)
+ * Email con Resend
  * ========================= */
-function getTransporter() {
-  const user = process.env.SMTP_USER; // 👉 NO se cambia (serivicios...)
-  const pass = process.env.SMTP_PASS;
+async function sendLeadEmail({ payload, docId }) {
+  assertResend();
 
-  if (!user || !pass) throw new Error("SMTP_USER / SMTP_PASS no configurados");
+  const to = process.env.EMAIL_TO || "agustinibarperrotta@gmail.com";
+  const from = process.env.FROM_EMAIL; // EJ: "Web Neolimp <contacto@tu-dominio.com>"
+  const replyTo = process.env.REPLY_TO || payload.email; // si no seteás REPLY_TO, responde al email del lead
 
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass },
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
+  const subject = `Nuevo pedido de presupuesto – ${payload.servicio || "Sin servicio"}`;
+
+  const text = `
+Nuevo lead válido desde la web:
+
+Nombre: ${payload.nombre}
+Empresa: ${payload.empresa || "-"}
+Email: ${payload.email}
+Teléfono: ${payload.telefono}
+Servicio: ${payload.servicio || "-"}
+Origen: ${payload.origen}
+
+Mensaje:
+${payload.mensaje}
+
+ID: ${docId || "-"}
+Fecha: ${new Date().toLocaleString("es-AR")}
+`.trim();
+
+  // Resend permite "reply_to" en headers
+  return resend.emails.send({
+    from,
+    to,
+    subject,
+    text,
+    reply_to: replyTo,
   });
 }
 
@@ -194,37 +227,18 @@ app.post("/contact", async (req, res) => {
 
     if (status === "lead_valido") {
       try {
-        const transporter = getTransporter();
-
-        await transporter.sendMail({
-          from: `"Web Neolimp" <${process.env.SMTP_USER}>`,
-          to: process.env.EMAIL_TO || "agustinibarperrotta@gmail.com",
-          subject: `Nuevo pedido de presupuesto – ${payload.servicio || "Sin servicio"}`,
-          text: `
-Nuevo lead válido desde la web:
-
-Nombre: ${payload.nombre}
-Empresa: ${payload.empresa || "-"}
-Email: ${payload.email}
-Teléfono: ${payload.telefono}
-Servicio: ${payload.servicio || "-"}
-Origen: ${payload.origen}
-
-Mensaje:
-${payload.mensaje}
-
-ID: ${docId || "-"}
-Fecha: ${new Date().toLocaleString("es-AR")}
-`.trim(),
-        });
+        await sendLeadEmail({ payload, docId });
 
         if (firestoreEnabled && docId) {
           await admin.firestore().collection("contactMessages").doc(docId).update({
             notifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+            // limpiar errores anteriores si existían
+            emailError: admin.firestore.FieldValue.delete(),
+            emailFailedAt: admin.firestore.FieldValue.delete(),
           });
         }
       } catch (mailErr) {
-        console.error("❌ Error enviando email:", mailErr);
+        console.error("❌ Error enviando email (Resend):", mailErr);
 
         if (firestoreEnabled && docId) {
           await admin.firestore().collection("contactMessages").doc(docId).update({
@@ -252,6 +266,33 @@ Fecha: ${new Date().toLocaleString("es-AR")}
  * Healthcheck
  * ========================= */
 app.get("/health", (_, res) => res.json({ ok: true }));
+
+/* =========================
+ * Test email (opcional)
+ * =========================
+ * Útil para validar Resend en Render:
+ * GET /email-test
+ */
+app.get("/email-test", async (req, res) => {
+  try {
+    await sendLeadEmail({
+      payload: {
+        nombre: "Test",
+        empresa: "Test",
+        email: "test@example.com",
+        telefono: "000",
+        servicio: "oficinas",
+        mensaje: "Test email desde Render",
+        origen: "test",
+      },
+      docId: "TEST",
+    });
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("❌ /email-test error:", e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => console.log(`🚀 Backend Neolimp escuchando en puerto ${port}`));
