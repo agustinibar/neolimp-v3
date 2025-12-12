@@ -1,12 +1,9 @@
-'use client';
-
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from '@/hooks/useInView';
 import { MapPin, Phone, Mail, Clock, Instagram } from 'lucide-react';
-import { db } from '@/firebase/config';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
+const API_URL = 'https://neolimp-v3.onrender.com';
 const INSTAGRAM_USERNAME = 'neolimp_srl';
 
 const INSTAGRAM_POSTS = [
@@ -36,7 +33,6 @@ const Contact = () => {
   const [isSending, setIsSending] = useState(false);
   const [status, setStatus] = useState(null); // null | 'success' | 'error'
 
-  // 🔹 Ref al formulario para poder hacer reset sin depender del evento
   const formRef = useRef(null);
 
   const contactInfo = [
@@ -75,41 +71,46 @@ const Contact = () => {
     const formData = new FormData(formEl || e.currentTarget);
 
     const payload = {
-      nombre: formData.get('nombre'),
-      empresa: formData.get('empresa'),
-      email: formData.get('email'),
-      telefono: formData.get('telefono'),
-      servicio: formData.get('servicio'),
-      mensaje: formData.get('mensaje'),
+      nombre: formData.get('nombre')?.toString().trim(),
+      empresa: formData.get('empresa')?.toString().trim(),
+      email: formData.get('email')?.toString().trim(),
+      telefono: formData.get('telefono')?.toString().trim(),
+      servicio: formData.get('servicio')?.toString().trim(),
+      mensaje: formData.get('mensaje')?.toString().trim(),
       origen: 'web-neolimp-contacto',
-      createdAt: serverTimestamp(),
+      website: formData.get('website')?.toString().trim(), // honeypot
     };
 
-    let success = false;
-
     try {
-      const docRef = await addDoc(collection(db, 'contactMessages'), payload);
-      console.log('Mensaje guardado OK con id:', docRef?.id);
-      success = true;
+      const resp = await fetch(`${API_URL}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await resp.json().catch(() => null);
+
+      if (!resp.ok || !data?.ok) {
+        console.error('Backend error:', data);
+        throw new Error(data?.error || 'Error enviando');
+      }
+
+      console.log('Respuesta backend:', data); // {status, score, reasons, docId}
+
+      if (formEl && typeof formEl.reset === 'function') {
+        try {
+          formEl.reset();
+        } catch (err) {
+          console.warn('No se pudo resetear el formulario:', err);
+        }
+      }
+
+      setStatus('success');
     } catch (error) {
-      console.error('Error guardando mensaje en Firebase:', error);
-      success = false;
+      console.error('Error enviando al backend:', error);
+      setStatus('error');
     } finally {
       setIsSending(false);
-
-      if (success) {
-        // Intentamos resetear el form, pero si falla no marcamos error
-        if (formEl && typeof formEl.reset === 'function') {
-          try {
-            formEl.reset();
-          } catch (err) {
-            console.warn('No se pudo resetear el formulario:', err);
-          }
-        }
-        setStatus('success');
-      } else {
-        setStatus('error');
-      }
     }
   };
 
@@ -156,6 +157,24 @@ const Contact = () => {
             onSubmit={handleSubmit}
             className="space-y-5 max-w-3xl mx-auto"
           >
+            {/* Honeypot anti-bots (debe quedar vacío) */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '-9999px',
+                top: 'auto',
+                width: '1px',
+                height: '1px',
+                overflow: 'hidden',
+              }}
+              aria-hidden="true"
+            >
+              <label>
+                Website
+                <input type="text" name="website" autoComplete="off" tabIndex={-1} />
+              </label>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <input
