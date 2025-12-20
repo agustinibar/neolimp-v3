@@ -170,7 +170,7 @@ Fecha: ${new Date().toLocaleString("es-AR")}
     to,
     subject,
     text,
-    reply_to: replyTo,
+    replyTo,
   });
 }
 
@@ -255,6 +255,8 @@ app.post("/contact", async (req, res) => {
       score,
       reasons,
       docId,
+      mailSent,
+      emailError,
     });
   } catch (err) {
     console.error("❌ Error /contact:", err);
