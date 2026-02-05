@@ -2,6 +2,7 @@
 import React from "react";
 import { Helmet } from "react-helmet";
 import { Routes, Route } from "react-router-dom";
+
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Stats from "@/components/Stats";
@@ -9,7 +10,7 @@ import Services from "@/components/Services";
 import About from "@/components/About";
 import Clients from "@/components/Clients";
 import Blog from "@/components/Blog";
-import Jobs from "@/components/Jobs";
+// import Jobs from "@/components/Jobs";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
@@ -18,8 +19,13 @@ import { Toaster } from "@/components/ui/toaster";
 import BlogCaseStudy1 from "@/components/ui/BlogCaseStudy1";
 import BlogCaseStudy2 from "./components/ui/BlogCaseStudy2";
 import BlogCaseStudy3 from "./components/ui/BlogCaseStudy3";
+import CallButton from "./components/CallButton";
 
-// dejo la home como un subcomponente para que Routes quede prolijo
+// ADMIN
+import RequireAdmin from "./admin/RequireAdmin";
+import AdminDashboard from "./admin/AdminDashboard";
+import AdminLogin from "./admin/AdminLogin"; // ✅ faltaba
+
 const HomePage = () => (
   <>
     <Helmet>
@@ -38,9 +44,10 @@ const HomePage = () => (
       <About />
       <Clients />
       <Blog />
-      {/* <Jobs />  si querés activarlo */}
+      {/* <Jobs /> */}
       <Contact />
       <Footer />
+      <CallButton />
       <WhatsAppButton />
       <Toaster />
     </div>
@@ -51,12 +58,26 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      {/* Blog #1 */}
+
       <Route path="/blog01" element={<BlogCaseStudy1 />} />
-       {/* Blog #2 */}
       <Route path="/blog02" element={<BlogCaseStudy2 />} />
-      {/* Blog #3 */}
       <Route path="/blog03" element={<BlogCaseStudy3 />} />
+
+      {/* ✅ ADMIN LOGIN */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+
+      {/* ✅ ADMIN DASHBOARD PROTEGIDO */}
+      <Route
+        path="/admin"
+        element={
+          <RequireAdmin>
+            <AdminDashboard />
+          </RequireAdmin>
+        }
+      />
+
+      {/* opcional: 404 */}
+      <Route path="*" element={<div className="p-6">404</div>} />
     </Routes>
   );
 }

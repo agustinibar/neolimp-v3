@@ -1,6 +1,11 @@
 // src/firebase/config.ts (o donde lo tengas)
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+
+console.log("FB projectId:", import.meta.env.VITE_FIREBASE_PROJECT_ID);
+console.log("FB authDomain:", import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+console.log("FB apiKey exists:", !!import.meta.env.VITE_FIREBASE_API_KEY);
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,3 +21,4 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
+export const auth = getAuth(app);
