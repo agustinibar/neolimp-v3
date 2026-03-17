@@ -232,9 +232,7 @@ function BillingOverviewCard() {
               ⋮
             </button>
           </div>
-
-          <div className="mt-3 flex items-center gap-3">
-          </div>
+          <div className="mt-3 flex items-center gap-3" />
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -304,10 +302,7 @@ function InfoStat({ label, value, help }) {
 }
 
 function DemographicHeatmap() {
-  const cells = [
-    0, 0, 60, 55, 20, 0,
-    0, 0, 100, 90, 65, 35,
-  ];
+  const cells = [0, 0, 60, 55, 20, 0, 0, 0, 100, 90, 65, 35];
 
   return (
     <div className="grid grid-cols-6 gap-2">
@@ -739,25 +734,62 @@ export default function AdminDashboard() {
           />
 
           <div className="overflow-auto">
-            <table className="w-full min-w-[1220px] text-sm">
+            <table className="w-full min-w-[1500px] text-sm">
               <thead className="sticky top-0 z-10 bg-slate-50">
                 <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-4">Etiqueta</th>
+                  <th className="px-4 py-4">Mensaje</th>
                   <th className="px-4 py-4">Fecha</th>
                   <th className="px-4 py-4">Nombre</th>
                   <th className="px-4 py-4">Empresa</th>
                   <th className="px-4 py-4">Servicio</th>
                   <th className="px-4 py-4">Email</th>
                   <th className="px-4 py-4">Teléfono</th>
-                  <th className="px-4 py-4">Mensaje</th>
+                  <th className="px-4 py-4">Etiqueta</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-100">
                 {rows.map((r) => (
                   <tr key={r.id} className="align-top transition hover:bg-slate-50/70">
-                    <td className="px-4 py-4">
-                      <div className="flex min-w-[220px] flex-col gap-2">
+                    <td className="min-w-[460px] max-w-[720px] px-4 py-5">
+                      <div className="whitespace-pre-wrap break-words text-[14px] leading-6 text-slate-800">
+                        {r.mensaje || "—"}
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500">
+                        ID: <span className="font-mono">{r.id}</span>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-5 whitespace-nowrap text-slate-700">{r.created}</td>
+
+                    <td className="px-4 py-5 whitespace-nowrap font-medium text-slate-900">
+                      {r.nombre}
+                    </td>
+
+                    <td className="px-4 py-5 whitespace-nowrap text-slate-700">
+                      {r.empresa}
+                    </td>
+
+                    <td className="px-4 py-5 whitespace-nowrap text-slate-700">
+                      {r.servicio}
+                    </td>
+
+                    <td className="px-4 py-5 whitespace-nowrap">
+                      <a
+                        className="font-medium underline decoration-slate-300 underline-offset-4 hover:decoration-slate-500"
+                        style={{ color: BRAND.blue }}
+                        href={`mailto:${r.email}`}
+                      >
+                        {r.email}
+                      </a>
+                    </td>
+
+                    <td className="px-4 py-5 whitespace-nowrap text-slate-700">
+                      {r.telefono}
+                    </td>
+
+                    <td className="px-4 py-5">
+                      <div className="flex min-w-[230px] flex-col gap-2">
                         <Badge status={r.status} />
 
                         <div className="flex items-center gap-2">
@@ -784,31 +816,6 @@ export default function AdminDashboard() {
                             Quitar
                           </button>
                         </div>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-4 whitespace-nowrap text-slate-700">{r.created}</td>
-                    <td className="px-4 py-4 whitespace-nowrap font-medium text-slate-900">
-                      {r.nombre}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-slate-700">{r.empresa}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-slate-700">{r.servicio}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <a
-                        className="font-medium underline decoration-slate-300 underline-offset-4 hover:decoration-slate-500"
-                        style={{ color: BRAND.blue }}
-                        href={`mailto:${r.email}`}
-                      >
-                        {r.email}
-                      </a>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-slate-700">{r.telefono}</td>
-                    <td className="min-w-[420px] px-4 py-4">
-                      <div className="max-w-[520px] text-slate-800 line-clamp-2">
-                        {r.mensaje || "—"}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        ID: <span className="font-mono">{r.id}</span>
                       </div>
                     </td>
                   </tr>
