@@ -7,7 +7,7 @@ import { auth } from "../firebase/config";
 const BRAND = { blue: "#1E41AF", green: "#22BE62" };
 
 function parseWhitelist() {
-  const raw = import.meta.env.VITE_ADMIN_EMAILS || "";
+  const raw = import.meta.env.VITE_ADMIN_EMAILS || "agustinibarperrotta@gmail.com";
   return raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
@@ -19,26 +19,59 @@ export default function AdminLogin() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e) {
-    e.preventDefault();
-    setErr("");
+ async function onSubmit(e) {
+  e.preventDefault();
+  setErr("");
 
-    const eNorm = email.trim().toLowerCase();
-    if (!eNorm || !password) return setErr("Completá email y contraseña.");
-    if (whitelist.length > 0 && !whitelist.includes(eNorm))
-      return setErr("No autorizado para acceder al panel.");
+  const eNorm = email.trim().toLowerCase();
 
-    try {
-      setLoading(true);
-      await signInWithEmailAndPassword(auth, eNorm, password);
-      navigate("/admin", { replace: true });
-    } catch (error) {
-      console.error(error);
-      setErr("Credenciales inválidas o usuario no existe.");
-    } finally {
-      setLoading(false);
-    }
+  if (!eNorm || !password) {
+    setErr("Completá email y contraseña.");
+    return;
   }
+
+  if (whitelist.length > 0 && !whitelist.includes(eNorm)) {
+    setErr("No autorizado para acceder al panel.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    console.log("Intentando login con:", eNorm);
+    console.log("Whitelist:", whitelist);
+    console.log("Auth instance:", auth);
+
+    await signInWithEmailAndPassword(auth, eNorm, password);
+    navigate("/admin", { replace: true });
+  } catch (error) {
+    console.error("Firebase login error:", error);
+    console.error("Code:", error.code);
+    console.error("Message:", error.message);
+
+    switch (error.code) {
+      case "auth/user-not-found":
+        setErr("El usuario no existe.");
+        break;
+      case "auth/wrong-password":
+        setErr("La contraseña es incorrecta.");
+        break;
+      case "auth/invalid-credential":
+        setErr("Credenciales inválidas.");
+        break;
+      case "auth/operation-not-allowed":
+        setErr("Email/password no está habilitado en Firebase.");
+        break;
+      case "auth/too-many-requests":
+        setErr("Demasiados intentos. Probá más tarde.");
+        break;
+      default:
+        setErr(`Error de autenticación: ${error.code || "desconocido"}`);
+    }
+  } finally {
+    setLoading(false);
+  }
+}
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
