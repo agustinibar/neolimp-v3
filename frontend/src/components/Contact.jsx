@@ -1,76 +1,22 @@
-import React, { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { useInView } from '@/hooks/useInView';
-import { MapPin, Phone, Mail, Clock, Instagram } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Clock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
+import { SALES_PHONE_DISPLAY, SALES_PHONE_HREF, getWhatsAppUrl } from '@/config/contact';
+import { trackGoogleAdsContactConversion } from '@/utils/googleAds';
 
 const API_URL = import.meta.env.VITE_CONTACT_API_URL || 'https://neolimp-v3.onrender.com';
+const fieldClass = 'mt-1.5 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-200';
 
-const INSTAGRAM_USERNAME = 'neolimp_srl';
-
-const INSTAGRAM_POSTS = [
-  'https://www.instagram.com/p/DOEISH8jSWT/',
-  'https://www.instagram.com/p/DJcM40auHL7/',
-  'https://www.instagram.com/p/DGDlTzyOlJb/',
-  'https://www.instagram.com/p/DKPcLVfOxf0/',
-];
-
-const toEmbedUrl = (url) => {
-  try {
-    const u = new URL(url);
-    const parts = u.pathname.split('/').filter(Boolean);
-    const pIndex = parts.indexOf('p');
-    const code = pIndex >= 0 && parts[pIndex + 1] ? parts[pIndex + 1] : '';
-    return code ? `https://www.instagram.com/p/${code}/embed` : url;
-  } catch {
-    return url;
-  }
-};
-
-const Contact = () => {
-  const inViewResult = useInView({ threshold: 0.2 }) || [];
-  const ref = Array.isArray(inViewResult) ? inViewResult[0] : null;
-  const isInView = Array.isArray(inViewResult) ? inViewResult[1] : false;
-
+export default function Contact() {
   const [isSending, setIsSending] = useState(false);
-  const [status, setStatus] = useState(null); // null | 'success' | 'error'
-
+  const [status, setStatus] = useState(null);
   const formRef = useRef(null);
 
-  const contactInfo = [
-    {
-      icon: MapPin,
-      title: 'Dirección',
-      content: 'Lavalle 463, Campana, Buenos Aires, Argentina',
-      color: 'from-blue-500 to-blue-700',
-    },
-    {
-      icon: Phone,
-      title: 'Teléfono',
-      content: '+54 9 11 2465-0609',
-      color: 'from-green-500 to-green-700',
-    },
-    {
-      icon: Mail,
-      title: 'Email',
-      content: 'neolimpsrl@gmail.com',
-      color: 'from-blue-600 to-green-600',
-    },
-    {
-      icon: Clock,
-      title: 'Horario',
-      content: 'Lun - Vie: 8:00 - 18:00 | Sáb: 9:00 - 13:00',
-      color: 'from-green-600 to-blue-600',
-    },
-  ];
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setIsSending(true);
     setStatus(null);
-
     const formEl = formRef.current;
-    const formData = new FormData(formEl || e.currentTarget);
-
+    const formData = new FormData(formEl || event.currentTarget);
     const payload = {
       nombre: formData.get('nombre')?.toString().trim(),
       empresa: formData.get('empresa')?.toString().trim(),
@@ -79,34 +25,15 @@ const Contact = () => {
       servicio: formData.get('servicio')?.toString().trim(),
       mensaje: formData.get('mensaje')?.toString().trim(),
       origen: 'web-neolimp-contacto',
-      website: formData.get('website')?.toString().trim(), // honeypot
+      website: formData.get('website')?.toString().trim(),
     };
-
     try {
-      const resp = await fetch(`${API_URL}/contact`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await resp.json().catch(() => null);
-
-      if (!resp.ok || !data?.ok) {
-        console.error('Backend error:', data);
-        throw new Error(data?.error || 'Error enviando');
-      }
-
-      console.log('Respuesta backend:', data); // {status, score, reasons, docId}
-
-      if (formEl && typeof formEl.reset === 'function') {
-        try {
-          formEl.reset();
-        } catch (err) {
-          console.warn('No se pudo resetear el formulario:', err);
-        }
-      }
-
+      const response = await fetch(`${API_URL}/contact`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) throw new Error(data?.error || 'Error enviando');
+      formEl?.reset();
       setStatus('success');
+      trackGoogleAdsContactConversion('contact-form-success');
     } catch (error) {
       console.error('Error enviando al backend:', error);
       setStatus('error');
@@ -115,250 +42,21 @@ const Contact = () => {
     }
   };
 
-  return (
-    <section
-      id="contacto"
-      ref={ref}
-      className="py-20 bg-gradient-to-br from-blue-50 via-white to-green-50"
-    >
-      <div className="container mx-auto px-4">
-        {/* HEADER */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
-            <span className="bg-gradient-to-r from-blue-700 to-green-600 bg-clip-text text-transparent">
-              Contactanos
-            </span>
-          </h2>
-          <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
-            Respondemos normalmente en menos de 24 horas hábiles.
-          </p>
-        </motion.div>
-
-        {/* FORMULARIO ARRIBA */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={isInView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.6 }}
-          className="bg-white shadow-xl rounded-2xl p-10 mb-16 hover:shadow-2xl transition-all"
-        >
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">
-            Solicitar presupuesto
-          </h3>
-          <p className="text-gray-600 mb-6">
-            Completá tus datos y un asesor te contactará a la brevedad.
-          </p>
-
-          <form
-            ref={formRef}
-            onSubmit={handleSubmit}
-            className="space-y-5 max-w-3xl mx-auto"
-          >
-            {/* Honeypot anti-bots (debe quedar vacío) */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '-9999px',
-                top: 'auto',
-                width: '1px',
-                height: '1px',
-                overflow: 'hidden',
-              }}
-              aria-hidden="true"
-            >
-              <label>
-                Website
-                <input type="text" name="website" autoComplete="off" tabIndex={-1} />
-              </label>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <input
-                  type="text"
-                  name="nombre"
-                  placeholder="Nombre y apellido"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <input
-                  type="text"
-                  name="empresa"
-                  placeholder="Empresa"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-600 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Email"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <input
-                  type="tel"
-                  name="telefono"
-                  placeholder="Teléfono / WhatsApp"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-600 outline-none"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <select
-                name="servicio"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Seleccioná el tipo de servicio
-                </option>
-                <option value="oficinas">Limpieza de oficinas</option>
-                <option value="industrial">Limpieza industrial / plantas</option>
-                <option value="consorcios">Consorcios y edificios</option>
-                <option value="clubes">Clubes y espacios deportivos</option>
-                <option value="municipios">Municipios / organismos públicos</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-
-            <div>
-              <textarea
-                name="mensaje"
-                rows={4}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-600 outline-none resize-none"
-                placeholder="Contanos tu necesidad (m², frecuencia, tipo de espacio, etc.)"
-                required
-              />
-            </div>
-
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <button
-                type="submit"
-                disabled={isSending}
-                className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-blue-800 to-green-500 text-white font-semibold shadow-md hover:shadow-lg hover:translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isSending ? 'Enviando...' : 'Enviar consulta'}
-              </button>
-
-              {status === 'success' && (
-                <p className="text-sm text-green-600">
-                  ✅ ¡Mensaje enviado! Te contactaremos a la brevedad.
-                </p>
-              )}
-              {status === 'error' && (
-                <p className="text-sm text-red-600">
-                  ❌ Ocurrió un error al enviar. Probá nuevamente en unos minutos.
-                </p>
-              )}
-            </div>
-          </form>
-        </motion.div>
-
-        {/* ABAJO: INFO + MAPA + INSTAGRAM */}
-        <div className="grid lg:grid-cols-2 gap-10">
-          {/* INFO + MAPA */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 border-b pb-3">
-                Información de contacto
-              </h3>
-              <div className="grid grid-cols-1 gap-5">
-                {contactInfo.map((info) => (
-                  <div
-                    key={info.title}
-                    className="flex items-start space-x-4 bg-gray-50 p-4 rounded-xl hover:bg-gray-100 transition-colors"
-                  >
-                    <div
-                      className={`w-12 h-12 bg-gradient-to-br ${info.color} rounded-lg flex items-center justify-center flex-shrink-0`}
-                    >
-                      <info.icon className="text-white" size={22} />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{info.title}</h4>
-                      <p className="text-gray-600 text-sm">{info.content}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300">
-              <div className="h-80 md:h-96">
-                <iframe
-                  src="https://www.openstreetmap.org/export/embed.html?bbox=-58.972243%2C-34.175203%2C-58.952243%2C-34.155203&layer=mapnik&marker=-34.1652026%2C-58.962243"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  loading="lazy"
-                  title="Ubicación Neolimp SRL"
-                ></iframe>
-              </div>
-              <div className="p-5 bg-gradient-to-r from-blue-800 to-green-500 text-white text-center font-semibold">
-                📍 Lavalle 463, Campana, Buenos Aires, Argentina
-              </div>
-            </div>
-          </div>
-
-          {/* INSTAGRAM */}
-          <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                <Instagram size={26} className="text-pink-500" />
-                Seguinos en Instagram
-              </h3>
-              <a
-                href={`https://www.instagram.com/${INSTAGRAM_USERNAME}/`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-blue-800 to-green-500 text-white font-semibold hover:opacity-90"
-              >
-                Ver perfil
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {INSTAGRAM_POSTS.map((url, i) => {
-                const embed = toEmbedUrl(url);
-                return (
-                  <div
-                    key={`${url}-${i}`}
-                    className="rounded-xl overflow-hidden border bg-gray-50 hover:shadow-md transition-all relative"
-                  >
-                    <div className="pt-[100%] relative">
-                      <iframe
-                        src={embed}
-                        className="absolute inset-0 w-full h-full"
-                        loading="lazy"
-                        allowTransparency
-                        frameBorder={0}
-                        scrolling="no"
-                        title={`Instagram post ${i + 1}`}
-                        referrerPolicy="strict-origin-when-cross-origin"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-export default Contact;
+  return <section id="contacto" className="bg-slate-950 py-16 text-white md:py-24"><div className="mx-auto grid max-w-7xl gap-10 px-4 lg:grid-cols-[.8fr_1.2fr] lg:px-8">
+    <div><p className="text-sm font-bold uppercase tracking-[.16em] text-green-400">Contacto comercial</p><h2 className="mt-3 text-3xl font-extrabold md:text-4xl">Solicitá un presupuesto para tu empresa</h2><p className="mt-5 max-w-xl leading-8 text-slate-300">Compartinos los datos básicos de la instalación. Si preferís una respuesta directa, llamanos o escribinos por WhatsApp.</p>
+      <div className="mt-8 grid gap-3"><a href={SALES_PHONE_HREF} onClick={() => trackGoogleAdsContactConversion('contact-phone')} className="flex min-h-14 items-center gap-3 rounded-lg border border-slate-700 px-4 font-bold hover:border-blue-400"><Phone className="text-blue-400" /> {SALES_PHONE_DISPLAY}</a><a href={getWhatsAppUrl()} target="_blank" rel="noopener noreferrer" onClick={() => trackGoogleAdsContactConversion('contact-whatsapp')} className="flex min-h-14 items-center gap-3 rounded-lg border border-slate-700 px-4 font-bold hover:border-green-400"><MessageCircle className="text-green-400" /> Consultar por WhatsApp</a></div>
+      <ul className="mt-8 space-y-4 text-sm text-slate-300"><li className="flex gap-3"><MapPin className="shrink-0 text-slate-400" size={20} /> Lavalle 463, Campana, Buenos Aires</li><li className="flex gap-3"><Mail className="shrink-0 text-slate-400" size={20} /> neolimpsrl@gmail.com</li><li className="flex gap-3"><Clock className="shrink-0 text-slate-400" size={20} /> Lun–Vie 8:00–18:00 · Sáb 9:00–13:00</li></ul>
+    </div>
+    <div className="rounded-2xl bg-white p-5 text-slate-900 shadow-2xl sm:p-8"><h3 className="text-2xl font-bold">Contanos sobre la instalación</h3><p className="mt-2 text-sm leading-6 text-slate-600">Los campos marcados con * son obligatorios.</p>
+      <form ref={formRef} onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <div className="absolute -left-[9999px]" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
+        <div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold" htmlFor="nombre">Nombre y apellido *<input id="nombre" name="nombre" autoComplete="name" required className={fieldClass} /></label><label className="text-sm font-semibold" htmlFor="empresa">Empresa<input id="empresa" name="empresa" autoComplete="organization" className={fieldClass} /></label></div>
+        <div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold" htmlFor="email">Email *<input id="email" name="email" type="email" autoComplete="email" required className={fieldClass} /></label><label className="text-sm font-semibold" htmlFor="telefono">Teléfono / WhatsApp *<input id="telefono" name="telefono" type="tel" inputMode="tel" autoComplete="tel" required className={fieldClass} /></label></div>
+        <label className="block text-sm font-semibold" htmlFor="servicio">Tipo de servicio<select id="servicio" name="servicio" defaultValue="" className={fieldClass}><option value="" disabled>Seleccioná una opción</option><option value="industrial">Industrial / plantas / depósitos</option><option value="oficinas">Oficinas y espacios corporativos</option><option value="salud">Clínicas y sanatorios</option><option value="consorcios">Consorcios y edificios</option><option value="clubes">Clubes y espacios comunes</option><option value="municipios">Municipios / organismos públicos</option><option value="otro">Otro</option></select></label>
+        <label className="block text-sm font-semibold" htmlFor="mensaje">¿Qué necesitás cotizar? *<textarea id="mensaje" name="mensaje" rows="4" required className={`${fieldClass} py-3`} placeholder="Tipo de instalación, ubicación, superficie aproximada, frecuencia u horarios." /></label>
+        <button type="submit" disabled={isSending} className="min-h-[52px] w-full rounded-lg bg-blue-800 px-6 py-3.5 font-bold text-white hover:bg-blue-900 disabled:cursor-wait disabled:opacity-60">{isSending ? 'Enviando solicitud…' : 'Solicitar presupuesto'}</button>
+        {status === 'success' && <p role="status" aria-live="polite" className="rounded-lg bg-green-50 p-4 text-sm font-semibold text-green-800">Solicitud enviada. El equipo de Neolimp se pondrá en contacto.</p>}{status === 'error' && <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm font-semibold text-red-800">No pudimos enviar la solicitud. Intentá nuevamente o contactanos por teléfono o WhatsApp.</p>}
+      </form>
+    </div>
+  </div></section>;
+}

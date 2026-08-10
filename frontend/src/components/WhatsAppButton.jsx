@@ -1,28 +1,13 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
-import FloatingCTAButton from '../components/ui/FloatingCTAButton';
+import FloatingCTAButton from '@/components/ui/FloatingCTAButton';
+import { getWhatsAppUrl } from '@/config/contact';
+import { trackGoogleAdsContactConversion } from '@/utils/googleAds';
 
-const WhatsAppButton = () => {
-  const handleWhatsAppClick = () => {
-    const phoneNumber = '+5491130180606';
-    const message = encodeURIComponent('Hola! Me gustaría solicitar información sobre sus servicios de limpieza.');
-    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+export default function WhatsAppButton() {
+  const handleClick = () => {
+    trackGoogleAdsContactConversion('whatsapp');
+    window.open(getWhatsAppUrl(), '_blank', 'noopener,noreferrer');
   };
-
-  return (
-    <FloatingCTAButton
-      label="Consultá por WhatsApp"
-      onClick={handleWhatsAppClick}
-      icon={<MessageCircle size={28} className="text-white" />}
-      wrapperClassName="fixed bottom-6 right-6 z-50 flex items-center gap-3"
-      className="
-        w-16 h-16 rounded-full
-        bg-gradient-to-br from-green-400 to-green-600
-        shadow-2xl flex items-center justify-center
-        hover:shadow-green-500/50 transition-shadow
-      "
-    />
-  );
-};
-
-export default WhatsAppButton;
+  return <FloatingCTAButton label="Consultar por WhatsApp" onClick={handleClick} icon={<MessageCircle size={26} className="text-white" />} wrapperClassName="hidden md:flex fixed bottom-6 right-6 z-50 items-center gap-3" className="grid h-14 w-14 place-items-center rounded-full bg-green-600 shadow-xl hover:bg-green-700" />;
+}
